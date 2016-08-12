@@ -133,7 +133,7 @@ def self_sign_csr(csr_file, privkey, valid_days):
     domains = get_csr_domains(csr_file)
 
     openssl_cert_cmd = [
-        OPENSSL_BIN, "x509", "-req",
+        OPENSSL_BIN, "x509", "-req", "-sha256",
         "-days", str(valid_days),
         "-in", csr_file,
         "-signkey", privkey,
