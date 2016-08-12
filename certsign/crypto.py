@@ -202,6 +202,18 @@ def create_csr(privkey, domains, dname, openssl_conf='/etc/ssl/openssl.cnf'):
     return csr
 
 
+def create_private_key(bits):
+    proc = subprocess.Popen(
+        [OPENSSL_BIN, "genrsa", str(bits)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    out, err = proc.communicate()
+    if proc.returncode != 0:
+        raise IOError("OpenSSL Error: {0}".format(err))
+    key = out.decode('utf8')
+    return key
+
+
 def nopad_b64(b):
     """helper function base64 encode for jose spec"""
     if not isinstance(b, bytes):

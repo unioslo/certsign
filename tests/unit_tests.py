@@ -129,6 +129,12 @@ class CryptoTest(unittest.TestCase):
             csr_domains = crypto.get_csr_domains(csr_file.name)
         self.assertEqual(csr_domains, {"domain1.example", "www.domain1.example"})
 
+    def test_create_private_key(self):
+        privkey = crypto.create_private_key(1024)
+        self.assertTrue("-----BEGIN RSA PRIVATE KEY-----" in privkey)
+        self.assertTrue("-----END RSA PRIVATE KEY-----" in privkey)
+
+
 test_suite = unittest.TestSuite([
     unittest.defaultTestLoader.loadTestsFromTestCase(ClientTest),
     unittest.defaultTestLoader.loadTestsFromTestCase(CryptoTest),
