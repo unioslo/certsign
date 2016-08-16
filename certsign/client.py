@@ -118,7 +118,7 @@ def sign_csr(
     cert = new_certificate_handler(client.send_signed_request(client.ca_directory + "/acme/new-cert", {
         "resource": "new-cert",
         "csr": csr_der,
-    }))
+    }, binary=True))
     # return signed certificate!
     log.info("Certificate signed!")
     return cert
@@ -157,7 +157,7 @@ def new_challenge_handler(response):
         raise ValueError("Error requesting challenges: {0} {1}".format(status, result))
 
         # make the challenge file
-    challenge = [c for c in json.loads(result.decode('utf8'))['challenges'] if c['type'] == "http-01"][0]
+    challenge = [c for c in result['challenges'] if c['type'] == "http-01"][0]
     token = re.sub(r"[^A-Za-z0-9_\-]", "_", challenge['token'])
     return token, challenge
 
@@ -202,7 +202,7 @@ class ACMEClient(object):
     def get_nonce(self):
         return urlopen(self.ca_directory + "/directory").headers['Replay-Nonce']
 
-    def send_signed_request(self, url, payload):
+    def send_signed_request(self, url, payload, binary=False):
         data = json.dumps(
             self.signed_json_payload(payload, self.get_nonce())
         )
@@ -210,7 +210,10 @@ class ACMEClient(object):
             resp = urlopen(url, data.encode('utf8'))
             info = dict(status=resp.code)
             info.update(to_lower_case_keys(resp.info()))
-            return json.loads(resp.read().decode('utf8')), info
+            if binary:
+                return resp.read(), info
+            else:
+                return json.loads(resp.read().decode('utf8')), info
         except IOError as e:
             info = dict(status=getattr(e, "code", None))
             if hasattr(e, "info"):
