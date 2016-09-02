@@ -19,7 +19,7 @@ setup(
     test_suite = "tests.unit_tests",
     entry_points={
         'console_scripts': [
-            'certsign = certsign:main'
+            'certsign = certsign.cli:main'
         ]
     },
     classifiers=[

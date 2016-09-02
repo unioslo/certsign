@@ -1,4 +1,7 @@
+from __future__ import print_function
+
 import sys
+
 from . import cli
 
 rc = 1
