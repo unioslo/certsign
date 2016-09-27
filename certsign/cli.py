@@ -1,4 +1,4 @@
-import argparse, sys, logging
+import argparse, sys, logging, os, signal
 
 from . import client, server
 
@@ -47,6 +47,7 @@ def server_main(args=None):
     )
     parser.add_argument("--port", default=8000)
     parser.add_argument("--addr", default="localhost")
+    parser.add_argument("--pidfile", default=None)
 
     args = parser.parse_args(args)
     challenge_server(args)
@@ -67,8 +68,27 @@ def sign_csr(args):
 
 def challenge_server(args):
     acme_server = server.acme_challenge_server(args.challenge_dir, args.addr, args.port)
+    if args.pidfile:
+        if os.path.isfile(args.pidfile):
+            raise FileExistsError(args.pidfile)
+        with open(args.pidfile, "w") as f:
+            f.write("{}\n".format(os.getpid()))
     print("Starting server on {}:{}, use <Ctrl-C> to stop".format(args.addr, args.port))
     try:
         acme_server.serve_forever()
     except KeyboardInterrupt:
         pass
+    finally:
+        clean_pidfile(args.pidfile)
+
+
+def clean_pidfile(pidfile):
+    if pidfile and os.path.isfile(pidfile):
+        os.unlink(pidfile)
+
+
+def terminate(signo, frame):
+    sys.exit(0)
+
+# Make sure finally clauses are called on SIGTERM
+signal.signal(signal.SIGTERM, terminate)
