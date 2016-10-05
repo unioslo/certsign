@@ -1,6 +1,6 @@
-import argparse, sys, logging, os, signal
+import argparse, sys, logging, os, signal, codecs
 
-from . import client, server
+from . import client, server, crypto
 
 
 def main(args=None):
@@ -53,6 +53,39 @@ def server_main(args=None):
     challenge_server(args)
 
 
+def tool_main(args=None):
+    args = sys.argv[1:] if args is None else args
+
+    parser = argparse.ArgumentParser(
+        description="Various tools to support the certificate signing process"
+    )
+    subparsers = parser.add_subparsers(title="subcommands", dest="subcommand")
+    subparsers.required = True
+
+    privkey_parser = subparsers.add_parser("privkey")
+    privkey_parser.add_argument("--out", required=True)
+    privkey_parser.add_argument("--bits", type=int, default=4096)
+    privkey_parser.set_defaults(handler=create_private_key)
+
+    default_openssl_conf = '/etc/ssl/openssl.cnf'
+    if not os.path.exists(default_openssl_conf):
+        default_openssl_conf = '/etc/pki/tls/openssl.cnf'
+    csr_parser = subparsers.add_parser("csr")
+    csr_parser.add_argument("--privkey", required=True)
+    csr_parser.add_argument("--out", required=True)
+    csr_parser.add_argument(
+        "--dname", default=None, help="distinguished name of your organization"
+    )
+    csr_parser.add_argument(
+        "--conf", default=default_openssl_conf, help="the OpenSSl configuration file"
+    )
+    csr_parser.add_argument("domains", nargs='+')
+    csr_parser.set_defaults(handler=create_csr)
+
+    args = parser.parse_args(args)
+    args.handler(args)
+
+
 def sign_csr(args):
     client.LOGGER.setLevel(args.quiet or client.LOGGER.level)
     signed_crt = client.sign_csr(
@@ -80,6 +113,18 @@ def challenge_server(args):
         pass
     finally:
         clean_pidfile(args.pidfile)
+
+
+def create_private_key(args):
+    privkey = crypto.create_private_key(args.bits)
+    with codecs.open(args.out, "w", encoding="utf-8") as f:
+        f.write(privkey)
+
+
+def create_csr(args):
+    csr = crypto.create_csr(args.privkey, args.domains, args.dname, args.conf)
+    with codecs.open(args.out, "w", encoding="utf-8") as f:
+        f.write(csr)
 
 
 def clean_pidfile(pidfile):

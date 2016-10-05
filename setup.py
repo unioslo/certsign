@@ -21,6 +21,7 @@ setup(
         'console_scripts': [
             'certsign = certsign.cli:main',
             'certsign-server = certsign.cli:server_main',
+            'certsign-tool = certsign.cli:tool_main'
         ]
     },
     classifiers=[

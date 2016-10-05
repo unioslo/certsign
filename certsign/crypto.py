@@ -164,9 +164,9 @@ def self_sign_csr(csr_file, privkey, valid_days):
     return self_signed_cert
 
 
-def create_csr(privkey, domains, dname, openssl_conf='/etc/ssl/openssl.cnf'):
+def create_csr(privkey, domains, dname=None, openssl_conf='/etc/ssl/openssl.cnf'):
     cn = domains[0]
-    subject = "/CN={}/{}".format(cn, dname)
+    subject = "/CN={}/{}".format(cn, dname or '')
     openssl_req_command = [
         OPENSSL_BIN, "req", "-new", "-sha256",
         "-subj", subject,

@@ -75,8 +75,7 @@ class CryptoTest(unittest.TestCase):
         csr = crypto.create_csr(
             PRIVKEY,
             ["domain1.example"],
-            DNAME,
-            OPENSSL_CONF,
+            openssl_conf=OPENSSL_CONF,
         )
         with tempfile.NamedTemporaryFile() as csr_file:
             csr_file.write(csr.encode('utf-8'))
