@@ -2,7 +2,10 @@ import os, subprocess, base64, re, time, tempfile
 from datetime import datetime
 
 OPENSSL_BIN = "openssl"
-
+PEM_TYPE_MAP = {
+    "-----BEGIN CERTIFICATE REQUEST-----": "CSR",
+    "-----BEGIN CERTIFICATE-----": "CERT"
+}
 
 def get_rsa_key_public_info(key):
     """
@@ -38,7 +41,28 @@ def digest_sign(key, message):
     return nopad_b64(out)
 
 
-def get_csr_domains(csr_file):
+def pem_file_info(pem_file):
+    pem_type = detect_pem_type(pem_file)
+    if pem_type == "CSR":
+        return csr_info(pem_file)
+    elif pem_type == "CERT":
+        return cert_info(pem_file)
+    else:
+        raise TypeError("Not a known PEM file type")
+
+
+def detect_pem_type(a_file):
+    pem_type = None
+    with open(a_file, 'r') as f:
+        for line in f:
+            marker = line.strip()
+            if marker in PEM_TYPE_MAP:
+                pem_type = PEM_TYPE_MAP[marker]
+                break
+    return pem_type
+
+
+def csr_info(csr_file):
     proc = subprocess.Popen(
         [OPENSSL_BIN, "req", "-in", csr_file, "-noout", "-text"],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -47,11 +71,10 @@ def get_csr_domains(csr_file):
     if proc.returncode != 0:
         raise IOError("Error loading {0}: {1}".format(csr_file, err))
 
-    csr = out.decode('utf8')
-    return retrieve_domains(csr)
+    return out.decode('utf8')
 
 
-def get_cert_domains(cert_file):
+def cert_info(cert_file):
     proc = subprocess.Popen(
         [OPENSSL_BIN, "x509", "-in", cert_file, "-noout", "-text"],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -60,8 +83,15 @@ def get_cert_domains(cert_file):
     if proc.returncode != 0:
         raise IOError("Error loading {0}: {1}".format(cert_file, err))
 
-    cert = out.decode('utf8')
-    return retrieve_domains(cert)
+    return out.decode('utf8')
+
+
+def get_csr_domains(csr_file):
+    return retrieve_domains(csr_info(csr_file))
+
+
+def get_cert_domains(cert_file):
+    return retrieve_domains(cert_info(cert_file))
 
 
 def retrieve_domains(buffer):

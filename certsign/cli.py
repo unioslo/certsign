@@ -82,6 +82,10 @@ def tool_main(args=None):
     csr_parser.add_argument("domains", nargs='+')
     csr_parser.set_defaults(handler=create_csr)
 
+    view_parser = subparsers.add_parser('view')
+    view_parser.add_argument("file", help="A PEM encoded CSR or certificate")
+    view_parser.set_defaults(handler=view_cert)
+
     args = parser.parse_args(args)
     args.handler(args)
 
@@ -125,6 +129,10 @@ def create_csr(args):
     csr = crypto.create_csr(args.privkey, args.domains, args.dname, args.conf)
     with codecs.open(args.out, "w", encoding="utf-8") as f:
         f.write(csr)
+
+
+def view_cert(args):
+    print(crypto.pem_file_info(args.file))
 
 
 def clean_pidfile(pidfile):
