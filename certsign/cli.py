@@ -45,7 +45,7 @@ def server_main(args=None):
         "--challenge-dir", required=True,
         help="path to the directory that serves .well-known/acme-challenge/"
     )
-    parser.add_argument("--port", default=8000)
+    parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--addr", default="localhost")
     parser.add_argument("--pidfile", default=None)
 
