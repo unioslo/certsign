@@ -87,7 +87,7 @@ class CryptoTest(unittest.TestCase):
             cert_file.flush()
             cert_domains = crypto.get_cert_domains(cert_file.name)
             valid_days = crypto.get_cert_days(cert_file.name)
-        self.assertEqual(valid_days, 89)
+        self.assertEqual(valid_days, 90)
         self.assertSequenceEqual(cert_domains, {"domain1.example"})
 
     def test_self_signed_muliple_domain_cert(self):
@@ -99,7 +99,7 @@ class CryptoTest(unittest.TestCase):
             cert_file.flush()
             cert_domains = crypto.get_cert_domains(cert_file.name)
             valid_days = crypto.get_cert_days(cert_file.name)
-        self.assertEqual(valid_days, 89)
+        self.assertEqual(valid_days, 90)
         self.assertSequenceEqual(cert_domains, csr_domains)
 
     def test_create_single_domain_csr(self):
