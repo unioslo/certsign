@@ -6,13 +6,12 @@ setup(
     version="0.1",
     description="A tiny ACME (Let's Encrypt) Python 2 & 3 client library with minimal dependencies",
     author="Nils Fredrik Gjerull",
-    author_email="nils@gjerull.net",
-    url="https://github.com/nilsfr/certsign",
+    author_email="n.f.gjerull@usit.uio.no",
+    url="https://github.com/unioslo/certsign",
     keywords="acme letsencrypt",
     long_description=open("README.md").read(),
     packages=find_packages(exclude=["tests"]),
     setup_requires=["setuptools_git"],
-    tests_require=["mock"],
     test_suite = "tests.unit_tests",
     entry_points={
         'console_scripts': [
@@ -26,7 +25,7 @@ setup(
         "Environment :: Console",
         "Intended Audience :: Developers",
         "Intended Audience :: System Administrators"
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: BSD License",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 2.7",
