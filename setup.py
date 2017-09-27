@@ -11,8 +11,7 @@ setup(
     keywords="acme letsencrypt",
     long_description=open("README.md").read(),
     packages=find_packages(exclude=["tests"]),
-    setup_requires=["setuptools_git"],
-    test_suite = "tests.unit_tests",
+    test_suite="tests.unit_tests",
     entry_points={
         'console_scripts': [
             'certsign = certsign.cli:main',
