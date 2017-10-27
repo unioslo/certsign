@@ -39,10 +39,10 @@ setup(
         ]
     },
     classifiers=[
-        "Development Status :: 4 - Alpha",
+        "Development Status :: 3 - Alpha",
         "Environment :: Console",
         "Intended Audience :: Developers",
-        "Intended Audience :: System Administrators"
+        "Intended Audience :: System Administrators",
         "License :: OSI Approved :: BSD License",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 2",
