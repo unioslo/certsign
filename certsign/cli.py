@@ -10,13 +10,13 @@ def main(args=None):
         description="Use ACME to sign a certificate"
     )
     parser.add_argument(
-        "--account-key", required=False, help="path to your Let's Encrypt account private key"
+        "--account-key", required=True, help="path to your Let's Encrypt account private key"
     )
     parser.add_argument(
-        "--csr", required=False, help="path to your certificate signing request"
+        "--csr", required=True, help="path to your certificate signing request"
     )
     parser.add_argument(
-        "--challenge-dir", required=False,
+        "--challenge-dir", required=True,
         help="path to the directory that serves .well-known/acme-challenge/"
     )
     parser.add_argument(
