@@ -2,7 +2,7 @@
 certsign
 ========
 
-A tiny ACME_ Python 2 &amp; 3 client library with minimal dependencies. ACME is a
+A tiny ACME_ Python 2 & 3 client library with minimal dependencies. ACME is a
 protocol for domain certificate verification and signing initiated by `Let's Encrypt`_.
 This package is meant to be used as a library and also comes with command line scripts.
 
@@ -16,8 +16,13 @@ This package depends on having the OpenSSL executable in the PATH.
 Using pip
 ---------
 
-To install it from PyPI_ using pip_ call ``pip install certsign``. You can also install it
-from a code checkout using ``pip install .``
+To install it from PyPI_ using pip_ call::
+
+	pip install certsign
+
+You can also install it from a code checkout using::
+
+	pip install .
 
 Install to user home directory
 ------------------------------
