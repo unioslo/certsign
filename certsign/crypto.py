@@ -96,7 +96,7 @@ def get_cert_domains(cert_file):
 
 def retrieve_domains(buffer):
     domains = set()
-    common_name = re.search(r"Subject:.*? CN=([^\s,;/]+)", buffer)
+    common_name = re.search(r"Subject:.*? CN\s*=\s*([^\s,;/]+)", buffer)
     if common_name is not None:
         domains.add(common_name.group(1))
     subject_alt_names = re.search(

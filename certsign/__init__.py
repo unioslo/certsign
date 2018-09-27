@@ -1,9 +1,9 @@
 try:
-    import builtins
-except ImportError:
-    import __builtin__ as builtins
+    import __builtin__
 
-if not hasattr(builtins, 'FileExistsError'):
-    class FileExistsError(OSError):
-        """ File already exists. """
-    builtins.FileExistsError = FileExistsError
+    if not hasattr(__builtin__, 'FileExistsError'):
+        class FileExistsError(OSError):
+            """ File already exists. """
+        __builtin__.FileExistsError = FileExistsError
+except ImportError:
+    pass
