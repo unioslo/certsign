@@ -4,7 +4,7 @@ import pytest
 from certsign import client, crypto
 from .settings import *
 
-STAGING_CA_DIRECTORY = "https://acme-staging.api.letsencrypt.org"
+STAGING_CA_DIRECTORY = "https://acme-staging-v02.api.letsencrypt.org/directory"
 
 
 @pytest.mark.integration

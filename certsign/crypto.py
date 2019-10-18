@@ -7,6 +7,7 @@ PEM_TYPE_MAP = {
     "-----BEGIN CERTIFICATE-----": "CERT"
 }
 
+
 def get_rsa_key_public_info(key):
     """
     Parses an RSA key file in PEM format and returns the modulus

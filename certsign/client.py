@@ -2,13 +2,25 @@
 import json, os, base64, binascii, time, hashlib, re, copy, textwrap, logging
 try:
     from urllib.request import urlopen # Python 3
+    from urllib.request import Request
 except ImportError:
     from urllib2 import urlopen # Python 2
+    from urllib2 import Request as Request_orig
+
+    class Request(Request_orig):
+        def __init__(self, *args, **kwargs):
+            self._method = kwargs.pop('method', None)
+            Request_orig.__init__(self, *args, **kwargs)
+
+        def get_method(self):
+            if self._method is not None:
+                return self._method
+            return Request_orig.get_method(self)
 
 from . import crypto
 
-DEFAULT_CA_DIRECTORY = "https://acme-v01.api.letsencrypt.org"
-
+DEFAULT_CA_DIRECTORY = "https://acme-v02.api.letsencrypt.org/directory"
+ACME_ALG = "RS256"
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.addHandler(logging.StreamHandler())
@@ -16,17 +28,21 @@ LOGGER.setLevel(logging.INFO)
 
 
 def sign_csr(
-        account_key,
-        csr_file,
-        challenge_dir,
-        account_email=None,
-        ca_directory=DEFAULT_CA_DIRECTORY,
-        log=LOGGER,
+    account_key,
+    csr_file,
+    challenge_dir,
+    account_email=None,
+    ca_directory=DEFAULT_CA_DIRECTORY,
+    log=LOGGER,
 ):
     # parse account key to get public key
     log.info("Parsing account key...")
-    header, thumbprint = generate_header(account_key)
-    client = ACMEClient(ca_directory, account_key, header)
+    jwk, thumbprint = generate_jwk(account_key)
+    client = ACMEClient(
+        ACMEClient.get_directory_index(ca_directory),
+        account_key,
+        jwk
+    )
 
     log.info("Parsing CSR...")
     domains = crypto.get_csr_domains(csr_file)
@@ -37,36 +53,38 @@ def sign_csr(
 
     # get the certificate domains and expiration
     log.info("Check account...")
-    created, account_uri = account_registration_handler(client.send_signed_request(
-        client.ca_directory + "/acme/new-reg", {
-            "resource": "new-reg",
-            "agreement": "https://letsencrypt.org/documents/LE-SA-v1.1.1-August-1-2016.pdf",
-            "contact": contact
+    account, needs_update = account_registration_handler(
+        contact,
+        client.send_signed_request(
+            client.directory['newAccount'], {
+                "termsOfServiceAgreement": True,
+                "contact": contact,
+            }
+        )
+    )
+    client.use_account(account.url)
+    if needs_update:
+        log.info("Update contact information")
+        client.send_signed_request(account.url, {"contact": account.contact})
+
+    log.info("Create new order...")
+    order = signing_order_handler(client.send_signed_request(
+        client.directory['newOrder'], {
+            "identifiers": [{"type": "dns", "value": d} for d in domains]
         }
     ))
-    if created:
-        log.info("New registration")
-    else:
-        account, needs_update = account_handler(
-            contact, client.send_signed_request(account_uri, {'resource':'reg'})
-        )
-        if needs_update:
-            log.info("Update contact information")
-            account['contact'] = contact
-            client.send_signed_request(account_uri, account)
 
-    # verify each domain
-    for domain in domains:
+    for auth_url in order.authorizations:
+        authorization = generic_handler(
+            client.send_signed_request(auth_url),
+            "Error getting challenges"
+        )
+        domain = authorization['identifier']['value']
         log.info("Verifying {0}...".format(domain))
 
-        # get new challenge
-        token, challenge = new_challenge_handler(
-            client.send_signed_request(client.ca_directory + "/acme/new-authz", {
-              "resource": "new-authz",
-                "identifier": {"type": "dns", "value": domain},
-            })
-        )
-
+        # make the challenge file
+        challenge = [c for c in authorization['challenges'] if c['type'] == "http-01"][0]
+        token = re.sub(r"[^A-Za-z0-9_\-]", "_", challenge['token'])
         keyauthorization = "{0}.{1}".format(token, thumbprint)
         wellknown_path = os.path.join(challenge_dir, token)
         with open(wellknown_path, "w") as wellknown_file:
@@ -84,152 +102,209 @@ def sign_csr(
                 wellknown_path, wellknown_url
             ))
 
-        # notify challenge are met
-        result, info = client.send_signed_request(challenge['uri'], {
-            "resource": "challenge",
-            "keyAuthorization": keyauthorization,
-        })
-        status = info['status']
-        if status != 202:
-            raise ValueError("Error triggering challenge: {0} {1}".format(status, result))
+        # notify challenge is ready
+        generic_handler(
+            client.send_signed_request(challenge['url'], payload={}),
+            "Error submitting challenges for {0}".format(domain)
+        )
 
         # wait for challenge to be verified
-        while True:
-            try:
-                challenge_status = challenge_verification_handler(urlopen(challenge['uri']).read())
-            except IOError as e:
-                raise ValueError("Error checking challenge: {0} {1}".format(
-                    e.code, json.loads(e.read().decode('utf8'))
-                ))
-            if challenge_status['status'] == "pending":
-                time.sleep(2)
-            elif challenge_status['status'] == "valid":
-                log.info("{0} verified!".format(domain))
-                os.remove(wellknown_path)
-                break
-            else:
-                raise ValueError("{0} challenge did not pass: {1}".format(
-                    domain, challenge_status
-                ))
+        headers, authorization = client.poll_request(
+            auth_url,
+            handler=poll_handler(
+                ["pending"],
+                "Error checking challenge status for {0}".format(domain)
+            )
+        )
+        if authorization['status'] != "valid":
+            raise ValueError("Challenge did not pass for {0}: {1}".format(
+                domain, authorization))
+        log.info("{0} verified!".format(domain))
 
-    # get the new certificate
+    # finalize the order with the csr
     log.info("Signing certificate...")
     csr_der = crypto.csr_to_der_format(csr_file)
-    cert = new_certificate_handler(client.send_signed_request(client.ca_directory + "/acme/new-cert", {
-        "resource": "new-cert",
+    generic_handler(client.send_signed_request(order.finalize, {
         "csr": csr_der,
-    }, binary=True))
-    # return signed certificate!
+    }), "Error finalizing order")
+
+    # poll the order to monitor when it's done
+    headers, body = client.poll_request(
+        order.url,
+        handler=poll_handler(
+            ["pending", "processing"],
+            "Error checking order status"
+        )
+    )
+    if body['status'] != "valid":
+        raise ValueError("Order failed: {0}".format(body))
+
+    # get the new certificate
+    cert = generic_handler(
+        client.send_signed_request(body['certificate']),
+        "Failed to download the certificate"
+    )
     log.info("Certificate signed!")
     return cert
 
 
-def account_registration_handler(response):
-    result, info = response
+class ACMEClient(object):
 
-    uri = None
-    if 'location' in info:
-        uri = info['location']
-    status = info["status"]
-    if status in [200, 201]:
-        return True, uri
-    elif status == 409:
-        return False, uri
-    else:
-        raise ValueError("Error registering: {0} {1}".format(status, result))
+    def __init__(self, directory, account_key, jwk):
+        self.account_key = account_key
+        self.jwk = jwk
+        self.directory = directory
+        self.account_uri = None
+
+    def use_account(self, uri):
+        self.account_uri = uri
+
+    @staticmethod
+    def get_directory_index(ca_directory_url):
+        return generic_handler(
+            ACMEClient.send_request(ca_directory_url),
+            "Could not get directory index for {}".format(ca_directory_url)
+        )
+
+    def get_nonce(self):
+        request = Request(self.directory['newNonce'], method="HEAD")
+        return urlopen(request).headers['Replay-Nonce']
+
+    @staticmethod
+    def send_request(url, data=None):
+        try:
+            request = Request(
+                url,
+                data=data.encode('utf8') if data is not None else None,
+                headers={
+                    'Content-Type': 'application/jose+json',
+                    'User-Agent': 'certsign',
+                },
+            )
+            resp = urlopen(request)
+            headers = dict(status=resp.code)
+            headers.update(to_lower_case_keys(resp.info()))
+            body = resp.read()
+        except IOError as e:
+            headers = dict(status=getattr(e, "code", None))
+            if hasattr(e, "info"):
+                headers.update(to_lower_case_keys(e.info()))
+            body = e.read() if hasattr(e, "read") else str(e)
+
+        content_type = headers.get('content-type')
+        if content_type == "application/json":
+            body = json.loads(body.decode('utf8'))
+        return headers, body
+
+    def send_signed_request(self, url, payload=None):
+        data = json.dumps(
+            self.signed_json_payload(url, payload, self.get_nonce())
+        )
+        return self.send_request(url, data)
+
+    def signed_json_payload(self, url, payload, nonce):
+        payload64 = crypto.nopad_b64(json.dumps(payload)) \
+            if payload is not None else ""
+        protected = {"url": url, "alg": ACME_ALG, "nonce": nonce}
+        if self.account_uri is None:
+            protected["jwk"] = self.jwk
+        else:
+            protected["kid"] = self.account_uri
+        protected64 = crypto.nopad_b64(json.dumps(protected))
+        signature = crypto.digest_sign(self.account_key, "{0}.{1}".format(
+            protected64, payload64))
+        return {
+            "protected": protected64,
+            "payload": payload64,
+            "signature": signature,
+        }
+
+    def poll_request(self, url, handler):
+        while True:
+            response = self.send_signed_request(url)
+            complete = handler(response)
+            if not complete:
+                time.sleep(2)
+                continue
+            return response
 
 
-def account_handler(contact, response):
-    result, _ = response
+class Account(object):
+    def __init__(self, url, contact):
+        self.url = url
+        self.contact = contact
+
+
+class Order(object):
+    def __init__(self, url, authorizations, finalize):
+        self.url = url
+        self.authorizations = authorizations
+        self.finalize = finalize
+
+
+def account_registration_handler(contact, response):
+    headers, body = response
+
+    status = headers['status']
     do_update = False
-    if 'contact' in result:
-        if contact != result['contact']:
-            do_update = True
-    elif len(contact) > 0:
-        do_update = True
-    return result, do_update
+    if status in [200, 201]:
+        account = Account(headers['location'], contact)
+        if status == 200:
+            do_update = 'contact' in body and contact != body['contact']
+    else:
+        raise ValueError("Error registering: {0} {1}".format(status, body))
+
+    return account, do_update
 
 
-def new_challenge_handler(response):
-    result, info = response
-    status = info['status']
+def signing_order_handler(response):
+    headers, body = response
+    status = headers['status']
     if status != 201:
-        raise ValueError("Error requesting challenges: {0} {1}".format(status, result))
+        raise ValueError(
+            "Error creating new signing order: {0} {1}".format(status, body))
 
-        # make the challenge file
-    challenge = [c for c in result['challenges'] if c['type'] == "http-01"][0]
-    token = re.sub(r"[^A-Za-z0-9_\-]", "_", challenge['token'])
-    return token, challenge
-
-
-def challenge_verification_handler(result):
-    return json.loads(result.decode('utf8'))
+    return Order(headers['location'], body["authorizations"], body["finalize"])
 
 
 def new_certificate_handler(response):
-    result, info = response
-    status = info['status']
+    headers, body = response
+    status = headers['status']
     if status != 201:
-        raise ValueError("Error signing certificate: {0} {1}".format(status, result))
+        raise ValueError("Error signing certificate: {0} {1}".format(status, body))
 
     return """-----BEGIN CERTIFICATE-----\n{0}\n-----END CERTIFICATE-----\n""".format(
-        "\n".join(textwrap.wrap(base64.b64encode(result).decode('utf8'), 64))
+        "\n".join(textwrap.wrap(base64.b64encode(body).decode('utf8'), 64))
     )
 
 
-def generate_header(account_key):
+def generic_handler(response, error_message):
+    headers, body = response
+    status = headers['status']
+    if status < 200 or status >= 300:
+        raise ValueError("{0}: {1} {2}".format(error_message, status, body))
+    return body
+
+
+def poll_handler(pending_statuses, error_message):
+    def _handler(response):
+        body = generic_handler(response, error_message)
+        return not (body['status'] in pending_statuses)
+    return _handler
+
+
+def generate_jwk(account_key):
     pub_hex, pub_exp = crypto.get_rsa_key_public_info(account_key)
-    header = {
-        "alg": "RS256",
-        "jwk": {
-            "e": crypto.nopad_b64(binascii.unhexlify(pub_exp.encode("utf-8"))),
-            "kty": "RSA",
-            "n": crypto.nopad_b64(binascii.unhexlify(re.sub(r"(\s|:)", "", pub_hex).encode("utf-8"))),
-        },
+    jwk = {
+        "e": crypto.nopad_b64(binascii.unhexlify(pub_exp.encode("utf-8"))),
+        "kty": "RSA",
+        "n": crypto.nopad_b64(
+            binascii.unhexlify(re.sub(r"(\s|:)", "", pub_hex).encode("utf-8"))),
     }
-    accountkey_json = json.dumps(header['jwk'], sort_keys=True, separators=(',', ':'))
-    thumbprint = crypto.nopad_b64(hashlib.sha256(accountkey_json.encode('utf8')).digest())
-    return header, thumbprint
-
-
-class ACMEClient(object):
-
-    def __init__(self, ca_directory, account_key, header):
-        self.ca_directory = ca_directory
-        self.account_key = account_key
-        self.header = header
-
-    def get_nonce(self):
-        return urlopen(self.ca_directory + "/directory").headers['Replay-Nonce']
-
-    def send_signed_request(self, url, payload, binary=False):
-        data = json.dumps(
-            self.signed_json_payload(payload, self.get_nonce())
-        )
-        try:
-            resp = urlopen(url, data.encode('utf8'))
-            info = dict(status=resp.code)
-            info.update(to_lower_case_keys(resp.info()))
-            if binary:
-                return resp.read(), info
-            else:
-                return json.loads(resp.read().decode('utf8')), info
-        except IOError as e:
-            info = dict(status=getattr(e, "code", None))
-            if hasattr(e, "info"):
-                info.update(to_lower_case_keys(e.info()))
-            return getattr(e, "read", e.__str__)().decode('utf8'), info
-
-    def signed_json_payload(self, payload, nonce):
-        payload64 = crypto.nopad_b64(json.dumps(payload))
-        protected = copy.deepcopy(self.header)
-        protected["nonce"] = nonce
-        protected64 = crypto.nopad_b64(json.dumps(protected))
-        signature = crypto.digest_sign(self.account_key, "{0}.{1}".format(protected64, payload64))
-        return {
-            "header": self.header, "protected": protected64,
-            "payload": payload64, "signature": signature,
-        }
+    accountkey_json = json.dumps(jwk, sort_keys=True, separators=(',', ':'))
+    thumbprint = crypto.nopad_b64(hashlib.sha256(
+        accountkey_json.encode('utf8')).digest())
+    return jwk, thumbprint
 
 
 def to_lower_case_keys(mapping):

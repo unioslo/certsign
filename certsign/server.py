@@ -1,4 +1,4 @@
-import urllib, posixpath, os
+import posixpath, os
 try:
     from http.server import SimpleHTTPRequestHandler, HTTPServer
     from socketserver import ThreadingMixIn
