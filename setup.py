@@ -15,7 +15,7 @@ with open(path.join(here, "README.rst"), encoding="utf-8") as f:
 
 setup(
     name="certsign",
-    version="0.2",
+    version="0.3.dev1",
     description="A tiny ACME (Let's Encrypt) Python 2 & 3 client library with minimal dependencies",
     author="Nils Fredrik Gjerull",
     author_email="n.f.gjerull@usit.uio.no",
@@ -24,6 +24,9 @@ setup(
     long_description=long_description,
     license="BSD",
     packages=find_packages(exclude=["tests"]),
+    install_requires=[
+        "setuptools>=40.0",
+    ],
     setup_requires=setup_requires,
     tests_require=[
         "pytest",
