@@ -18,17 +18,17 @@ Using pip
 
 To install it from PyPI_ using pip_ call::
 
-	pip install certsign
+  pip install certsign
 
 You can also install it from a code checkout using::
 
-	pip install .
+  pip install .
 
 Install to user home directory
 ------------------------------
 With pip you can use the ``--user`` option to install it to your user's home directory::
 
-	pip install --user certsign
+  pip install --user certsign
 
 If you install to the user directory on Linux ``$HOME/.local/bin`` should be in your
 ``$PATH``-variable. On Linux you can add the following to ``.profile`` or ``.bashrc``
@@ -36,10 +36,10 @@ in your home directory, if ``$HOME/.local/bin`` is not already in you PATH.
 
 .. code:: bash
 
-	# set PATH so it includes user's private .local/bin if it exists
-	if [ -d "$HOME/.local/bin" ] ; then
-		PATH="$HOME/.local/bin:$PATH"
-	fi
+  # set PATH so it includes user's private .local/bin if it exists
+  if [ -d "$HOME/.local/bin" ] ; then
+    PATH="$HOME/.local/bin:$PATH"
+  fi
 
 The location for the scripts and the method to add it to the PATH is different for MacOS/OSX
 and Windows.
@@ -56,37 +56,37 @@ This is the primary usage of this library:
 
 .. code:: python
 
-	from certsign import client
-	account_key = 'acme_directory_account.key'
-	csr_file = 'your_domain.csr'
-	challenges_path = '/path/served/by/your/http/server'
-	account_email = 'you@example.com'
+  from certsign import client
+  account_key = 'acme_directory_account.key'
+  csr_file = 'your_domain.csr'
+  challenges_path = '/path/served/by/your/http/server'
+  account_email = 'you@example.com'
 
-	signed_cert = client.sign_csr(
-		account_key, csr_file, challenges_path, account_email=account_email
-	)
+  signed_cert = client.sign_csr(
+    account_key, csr_file, challenges_path, account_email=account_email
+  )
 
 Creating a private key and a CSR
 ................................
 
 .. code:: python
 
-	from certsign import crypto
+  from certsign import crypto
 
-	privkey_path = '/tmp/privkey.pem'
-	csr_path = '/tmp/example.com.csr'
+  privkey_path = '/tmp/privkey.pem'
+  csr_path = '/tmp/example.com.csr'
 
-	privkey = crypto.create_private_key(bits=2048)
-	with open(privkey_path, 'w') as f:
-		f.write(privkey.encode('utf-8'))
+  privkey = crypto.create_private_key(bits=2048)
+  with open(privkey_path, 'bw') as f:
+    f.write(privkey)
 
-	csr = crypto.create_csr(
-		privkey_path,
-		['example.com', 'www.example.com'],
-		openssl_conf='/etc/ssl/openssl.cnf'
-	)
-	with open(csr_path, 'w') as f:
-		f.write(csr.encode('utf-8'))
+  csr = crypto.create_csr(
+    privkey_path,
+    ['example.com', 'www.example.com'],
+    openssl_conf='/etc/ssl/openssl.cnf'
+  )
+  with open(csr_path, 'bw') as f:
+    f.write(csr)
 
 Command line
 ------------
@@ -95,41 +95,41 @@ certsign
 ........
 For signing a Certificate Signing Request (CSR)::
 
-	certsign --account-key /path/to/account/key --csr /path/to/domain.csr \
-	  --challenge-dir /path/served/by/your/http/server \
-	  --account-email you@example.com
+  certsign --account-key /path/to/account/key --csr /path/to/domain.csr \
+    --challenge-dir /path/served/by/your/http/server \
+    --account-email you@example.com
 
 certsign-tool
 .............
 Create a private key::
 
-	certsign-tool privkey --bits=4096 --out=/path/to/privkey.pem
+  certsign-tool privkey --bits=4096 --out=/path/to/privkey.pem
 
 Create a CSR::
 
-	certsign-tool csr --privkey=/path/to/privkey.pem \
-	  --out=/path/to/example.com.csr example.com www.example.com
+  certsign-tool csr --privkey=/path/to/privkey.pem \
+    --out=/path/to/example.com.csr example.com www.example.com
 
 View the CSR you just created::
 
-	certsign-tool view /path/to/example.com.csr
+  certsign-tool view /path/to/example.com.csr
 
 certsign-server
 ...............
 A simple server to respond to ACME challenges::
 
-	certsign-server --challenge-dir /path/served/by/your/http/server \
-		--addr localhost \
-		--port 8000 \
-		--pidfile /tmp/certsign.pid &
+  certsign-server --challenge-dir /path/served/by/your/http/server \
+    --addr localhost \
+    --port 8000 \
+    --pidfile /tmp/certsign.pid &
 
 To kill the server when finished:
 
 .. code:: bash
 
-	if [ -f /tmp/certsign.pid ]; then
-		pkill -F /tmp/certsign.pid
-	fi
+  if [ -f /tmp/certsign.pid ]; then
+    pkill -F /tmp/certsign.pid
+  fi
 
 Development
 ===========
@@ -156,9 +156,35 @@ To run the tests for several Python versions::
 
    tox
 
+
+Release Process
+===============
+
+The release proccess is based on the official documentation for `distributing packages`_.
+
+Create a `~/.pypirc`_ file to upload to The Python Package Index (PyPI)::
+
+    [distutils]
+    index-servers =
+        pypi
+
+    [pypi]
+    username: somepypiuser
+    password: somepassword
+
+Create a bindary and a source release and use twine_ to upload the packages. Also sign the
+packages using a gpg_ key::
+
+    python setup.py sdist bdist_wheel
+    twine upload -r pypi -s dist/*
+
 .. _ACME: https://github.com/ietf-wg-acme/acme/
 .. _Let's Encrypt: https://letsencrypt.org/
 .. _PyPI: https://pypi.org/
 .. _pip: https://pip.pypa.io/
 .. _pyvenv: https://docs.python.org/3/library/venv.html
 .. _virtualenv: http://docs.python-guide.org/en/latest/dev/virtualenvs/
+.. _distributing packages: https://packaging.python.org/tutorials/distributing-packages/
+.. _~/.pypirc: https://docs.python.org/3/distutils/packageindex.html#pypirc
+.. _twine: https://github.com/pypa/twine
+.. _gpg: https://gnupg.org/
