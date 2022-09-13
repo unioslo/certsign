@@ -191,7 +191,7 @@ def self_sign_csr(csr_file, privkey, valid_days):
     if proc.returncode != 0:
         raise IOError("OpenSSL Error: {0}".format(err))
 
-    self_signed_cert = out.decode('utf8')
+    self_signed_cert = out
     return self_signed_cert
 
 
@@ -229,7 +229,7 @@ def create_csr(privkey, domains, dname=None, openssl_conf='/etc/ssl/openssl.cnf'
     if proc.returncode != 0:
         raise IOError("OpenSSL Error: {0}".format(err))
 
-    csr = out.decode('utf8')
+    csr = out
     return csr
 
 
@@ -241,7 +241,7 @@ def create_private_key(bits):
     out, err = proc.communicate()
     if proc.returncode != 0:
         raise IOError("OpenSSL Error: {0}".format(err))
-    key = out.decode('utf8')
+    key = out
     return key
 
 

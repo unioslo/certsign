@@ -40,12 +40,12 @@ class CryptoTest(unittest.TestCase):
             openssl_conf=OPENSSL_CONF,
         )
         with tempfile.NamedTemporaryFile() as csr_file:
-            csr_file.write(csr.encode('utf-8'))
+            csr_file.write(csr)
             csr_file.flush()
             cert = crypto.self_sign_csr(csr_file.name, PRIVKEY, valid_days=90)
 
         with tempfile.NamedTemporaryFile() as cert_file:
-            cert_file.write(cert.encode('utf8'))
+            cert_file.write(cert)
             cert_file.flush()
             cert_domains = crypto.get_cert_domains(cert_file.name)
             valid_days = crypto.get_cert_days(cert_file.name)
@@ -57,7 +57,7 @@ class CryptoTest(unittest.TestCase):
         csr_domains = crypto.get_csr_domains(CSR_FILE)
 
         with tempfile.NamedTemporaryFile() as cert_file:
-            cert_file.write(cert.encode('utf8'))
+            cert_file.write(cert)
             cert_file.flush()
             cert_domains = crypto.get_cert_domains(cert_file.name)
             valid_days = crypto.get_cert_days(cert_file.name)
@@ -72,7 +72,7 @@ class CryptoTest(unittest.TestCase):
             OPENSSL_CONF,
         )
         with tempfile.NamedTemporaryFile() as csr_file:
-            csr_file.write(csr.encode('utf8'))
+            csr_file.write(csr)
             csr_file.flush()
             csr_domains = crypto.get_csr_domains(csr_file.name)
         self.assertEqual(csr_domains, {"domain1.example"})
@@ -85,12 +85,12 @@ class CryptoTest(unittest.TestCase):
             OPENSSL_CONF
         )
         with tempfile.NamedTemporaryFile() as csr_file:
-            csr_file.write(csr.encode('utf8'))
+            csr_file.write(csr)
             csr_file.flush()
             csr_domains = crypto.get_csr_domains(csr_file.name)
         self.assertEqual(csr_domains, {"domain1.example", "www.domain1.example"})
 
     def test_create_private_key(self):
-        privkey = crypto.create_private_key(1024)
+        privkey = crypto.create_private_key(1024).decode('utf8')
         self.assertTrue("-----BEGIN RSA PRIVATE KEY-----" in privkey)
         self.assertTrue("-----END RSA PRIVATE KEY-----" in privkey)
