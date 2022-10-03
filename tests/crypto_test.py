@@ -92,5 +92,5 @@ class CryptoTest(unittest.TestCase):
 
     def test_create_private_key(self):
         privkey = crypto.create_private_key(1024).decode('utf8')
-        self.assertTrue("-----BEGIN RSA PRIVATE KEY-----" in privkey)
-        self.assertTrue("-----END RSA PRIVATE KEY-----" in privkey)
+        self.assertTrue("-----BEGIN PRIVATE KEY-----" in privkey)
+        self.assertTrue("-----END PRIVATE KEY-----" in privkey)

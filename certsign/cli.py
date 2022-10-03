@@ -1,4 +1,4 @@
-import argparse, sys, logging, os, signal, codecs
+import argparse, sys, logging, os, signal
 
 from . import client, server, crypto
 
@@ -121,13 +121,13 @@ def challenge_server(args):
 
 def create_private_key(args):
     privkey = crypto.create_private_key(args.bits)
-    with codecs.open(args.out, "w", encoding="utf-8") as f:
+    with open(args.out, "bw") as f:
         f.write(privkey)
 
 
 def create_csr(args):
     csr = crypto.create_csr(args.privkey, args.domains, args.dname, args.conf)
-    with codecs.open(args.out, "w", encoding="utf-8") as f:
+    with open(args.out, "bw") as f:
         f.write(csr)
 
 
