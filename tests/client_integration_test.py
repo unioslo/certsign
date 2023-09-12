@@ -10,7 +10,7 @@ STAGING_CA_DIRECTORY = "https://acme-staging-v02.api.letsencrypt.org/directory"
 @pytest.mark.integration
 def sign_host_csr_test():
     hostname = socket.getfqdn()
-    csr = crypto.create_csr(PRIVKEY, [hostname], DNAME, OPENSSL_CONF)
+    csr = crypto.create_csr(RSA_PRIVATE_KEY, [hostname], DNAME, OPENSSL_CONF)
     with tempfile.NamedTemporaryFile() as csr_file:
         csr_file.write(csr.encode('utf8'))
         csr_file.flush()

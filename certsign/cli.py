@@ -2,6 +2,7 @@ import argparse, sys, logging, os, signal
 
 from . import client, server, crypto
 
+KEY_TYPES = ("rsa", "ecdsa")
 
 def main(args=None):
     args = sys.argv[1:] if args is None else args
@@ -63,7 +64,13 @@ def tool_main(args=None):
     subparsers.required = True
 
     privkey_parser = subparsers.add_parser("privkey")
+    privkey_parser.add_argument(
+        "--type",
+        choices=KEY_TYPES,
+        default=KEY_TYPES[0]
+    )
     privkey_parser.add_argument("--out", required=True)
+    privkey_parser.add_argument("--curve",  default="prime256v1")
     privkey_parser.add_argument("--bits", type=int, default=4096)
     privkey_parser.set_defaults(handler=create_private_key)
 
@@ -120,9 +127,14 @@ def challenge_server(args):
 
 
 def create_private_key(args):
-    privkey = crypto.create_private_key(args.bits)
-    with open(args.out, "bw") as f:
-        f.write(privkey)
+    privkey = None
+    if (args.type == "rsa"):
+        privkey = crypto.create_rsa_private_key(args.bits)
+    elif (args.type == "ecdsa"):
+        privkey = crypto.create_ecdsa_private_key(args.curve)
+    if privkey is not None:
+        with open(args.out, "bw") as f:
+            f.write(privkey)
 
 
 def create_csr(args):

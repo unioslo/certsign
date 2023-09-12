@@ -2,8 +2,10 @@ import os
 
 FIXTURE_DIR = os.path.join(os.path.dirname(__file__), 'fixtures')
 ACCOUNT_KEY = os.path.join(FIXTURE_DIR, 'account.key')
-CSR_FILE = os.path.join(FIXTURE_DIR, 'domain.csr')
-PRIVKEY = os.path.join(FIXTURE_DIR, 'privkey.pem')
+RSA_PRIVATE_KEY = os.path.join(FIXTURE_DIR, 'rsa-private.key')
+RSA_CSR_FILE = os.path.join(FIXTURE_DIR, 'rsa-domain.csr')
+ECDSA_PRIVATE_KEY = os.path.join(FIXTURE_DIR, 'ecdsa-private.key')
+ECDSA_CSR_FILE = os.path.join(FIXTURE_DIR, 'ecdsa-domain.csr')
 ACCOUNT_KEY_HEX = """d7:0f:e1:f1:52:e1:8c:70:2e:39:70:0c:f9:4d:
     7f:3e:88:ca:e3:7c:88:a1:ef:e2:67:aa:1a:f7:c5:
     59:52:0f:8c:cd:db:dc:98:9e:37:4c:cd:ae:be:cc:

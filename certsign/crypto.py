@@ -32,7 +32,7 @@ def get_rsa_key_public_info(key):
 
 def digest_sign(key, message):
     proc = subprocess.Popen(
-        [OPENSSL_BIN, "dgst", "-sha256", "-sign", key],
+        [OPENSSL_BIN, "dgst", "-sign", key],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
     out, err = proc.communicate(message.encode('utf8'))
@@ -164,7 +164,9 @@ def self_sign_csr(csr_file, privkey, valid_days):
     domains = get_csr_domains(csr_file)
 
     openssl_cert_cmd = [
-        OPENSSL_BIN, "x509", "-req", "-sha256",
+        OPENSSL_BIN,
+        "x509",
+        "-req",
         "-days", str(valid_days),
         "-in", csr_file,
         "-signkey", privkey,
@@ -199,7 +201,9 @@ def create_csr(privkey, domains, dname=None, openssl_conf='/etc/ssl/openssl.cnf'
     cn = domains[0]
     subject = "/CN={}/{}".format(cn, dname or '')
     openssl_req_command = [
-        OPENSSL_BIN, "req", "-new", "-sha256",
+        OPENSSL_BIN,
+        "req",
+        "-new",
         "-subj", subject,
         "-key", privkey
     ]
@@ -233,9 +237,21 @@ def create_csr(privkey, domains, dname=None, openssl_conf='/etc/ssl/openssl.cnf'
     return csr
 
 
-def create_private_key(bits):
+def create_rsa_private_key(bits):
     proc = subprocess.Popen(
         [OPENSSL_BIN, "genrsa", str(bits)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    out, err = proc.communicate()
+    if proc.returncode != 0:
+        raise IOError("OpenSSL Error: {0}".format(err))
+    key = out
+    return key
+
+
+def create_ecdsa_private_key(curve):
+    proc = subprocess.Popen(
+        [OPENSSL_BIN, "ecparam", "-genkey", "-name", curve],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
     out, err = proc.communicate()

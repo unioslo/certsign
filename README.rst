@@ -176,7 +176,7 @@ Create a bindary and a source release and use twine_ to upload the packages. Als
 packages using a gpg_ key::
 
     python setup.py sdist bdist_wheel
-    twine upload -r pypi -s dist/*
+    twine upload -r pypi dist/*
 
 .. _ACME: https://github.com/ietf-wg-acme/acme/
 .. _Let's Encrypt: https://letsencrypt.org/
